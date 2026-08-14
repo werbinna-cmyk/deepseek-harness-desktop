@@ -1,0 +1,13 @@
+node_modules/
+runtime/
+runtime-win/
+dist/
+.npm-cache/
+.electron-cache/
+resources/icon.iconset/
+resources/*.png
+resources/*.ico
+resources/.icon-*
+.smoke-data/
+*.log
+.DS_Store

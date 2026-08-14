@@ -1,0 +1,25 @@
+{
+  "name": "deepseek-harness-desktop",
+  "productName": "DeepSeek Harness",
+  "version": "1.0.0",
+  "description": "macOS desktop client for DeepSeek Harness: bundles the dsh backend, launches it on startup, and auto-updates from npm/GitHub.",
+  "main": "main.js",
+  "author": "DeepSeek Harness Desktop",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "make:icon": "node scripts/make-icon.mjs",
+    "start": "electron .",
+    "smoke": "electron . --smoke-test",
+    "test": "node scripts/verify-update-logic.mjs",
+    "build": "node scripts/prepare-runtime.mjs && electron-builder --mac",
+    "build:dir": "node scripts/prepare-runtime.mjs && electron-builder --mac dir",
+    "pack": "electron-builder --mac dir"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  }
+}

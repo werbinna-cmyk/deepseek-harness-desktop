@@ -1,0 +1,56 @@
+appId: com.deepseek-ai.harness.desktop
+productName: DeepSeek Harness
+directories:
+  output: dist
+  buildResources: resources
+# Reuse the Electron binary already installed by `npm install` instead of
+# downloading it again from GitHub (faster and network-independent).
+electronDist: node_modules/electron/dist
+files:
+  - main.js
+  - lib/**/*
+  - package.json
+  - "!node_modules/**/*"
+extraResources:
+  # The bundled dsh runtime snapshot (installed by scripts/prepare-runtime.mjs).
+  # Seeded into ~/Library/Application Support/DeepSeek Harness/runtime on first
+  # launch, where updates can then be applied in place.
+  #
+  # electron-builder hard-prunes a top-level `node_modules` directory in
+  # extraResources (the filter rejects the first path segment "node_modules"),
+  # so the tree is split: the runtime root first, then node_modules copied
+  # with itself as the `from` root.
+  - from: runtime
+    to: runtime
+    filter:
+      - "**/*"
+  - from: runtime/node_modules
+    to: runtime/node_modules
+    filter:
+      - "**/*"
+mac:
+  category: public.app-category.developer-tools
+  icon: resources/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
+  darkModeSupport: true
+  hardenedRuntime: false
+  gatekeeperAssess: false
+dmg:
+  title: DeepSeek Harness
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+npmRebuild: false
+electronLanguages:
+  - en
+  - zh_CN
