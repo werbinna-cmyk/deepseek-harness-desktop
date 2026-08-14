@@ -126,6 +126,48 @@ DeepSeek Harness-1.0.0-x64-setup.exe   # NSIS 安装程序
 DeepSeek Harness-1.0.0-win.zip         # 便携 zip
 ```
 
+## 发布与 Release 使用说明
+
+### 获取安装包
+
+GitHub Release 页面：<https://github.com/werbinna-cmyk/deepseek-harness-desktop/releases>
+
+| 平台 | 文件 | 安装方式 |
+| --- | --- | --- |
+| macOS（Apple Silicon） | `DeepSeek.Harness-1.0.0-arm64.dmg` | 打开 dmg，把 **DeepSeek Harness** 拖入「应用程序」；首次打开如提示“无法验证开发者”，右键 → 打开 → 打开 |
+| macOS（Apple Silicon） | `DeepSeek.Harness-1.0.0-arm64-mac.zip` | 解压后把 `DeepSeek Harness.app` 放入「应用程序」 |
+| Windows x64 | `DeepSeek.Harness-1.0.0-x64-setup.exe` | 运行安装向导（可选安装目录、桌面/开始菜单快捷方式）；**未签名**，SmartScreen 提示请选「仍要运行」 |
+| Windows x64 | `DeepSeek.Harness-1.0.0-win.zip` | 解压到任意目录，运行 `DeepSeek Harness.exe`（便携版） |
+
+数据与配置：macOS 在 `~/Library/Application Support/DeepSeek Harness/`，Windows 在
+`%APPDATA%\DeepSeek Harness\`。首次启动会自动迁移旧 `~/.dsh` 的 `.env` / 设置 / 预设。
+
+### 标签与版本
+
+- `v1.0.0` — 发布标签（对应 Release）
+- `dsh`、`deepseek-harness` — 语义标签（均指向 v1.0.0 提交）
+- 新版本流程：修改 `package.json` 的 `version` → 推送 `vX.Y.Z` 标签 →
+  [GitHub Actions](#github-actions-双平台自动构建) 自动构建并把安装包附加到该标签的
+  Release。
+
+### 应用内更新提示
+
+- 菜单「更新 → 立即检查更新…（⌘/Ctrl+U）」与后台自动检查会同时做两件事：
+  1. **dsh 运行时**：检查 npm 上 `@deepseek-ai/*` 的新版本并**自动就地更新**（无需重装）；
+  2. **桌面版本身**：检查本仓库 GitHub Release，若有新版本弹窗/通知引导前往下载
+     （macOS 下载 .dmg，Windows 下载 setup.exe）——桌面版应用目前不做静默自升级，
+     安装新版前请先退出旧版。
+
+## GitHub Actions 双平台自动构建
+
+仓库内置 `.github/workflows/build.yml`：
+
+- 推送 `main`：macOS（arm64）与 Windows（x64）各自在原生 runner 上构建运行时并
+  打包，产物作为 Actions Artifacts（预览构建）。
+- 推送 `v*` 标签：构建后把 `dmg/zip/setup.exe` 自动附加到该标签对应的 GitHub
+  Release（`softprops/action-gh-release`）。
+- 手动触发：仓库 Actions 页 → **Run workflow**。
+
 ## 运行与冒烟测试
 
 ```bash

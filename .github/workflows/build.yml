@@ -1,0 +1,64 @@
+# 双平台自动构建：push 到 main 生成预览产物（Artifacts），推送 v* 标签时构建并
+# 附加到对应 GitHub Release。
+#
+# 每个平台在原生 runner 上构建自己的运行时（runtime-mac / runtime-win），
+# 再交给 electron-builder 打包（macOS: dmg/zip；Windows: NSIS setup.exe + zip）。
+
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14            # Apple Silicon (arm64) runner
+            platform: darwin
+            arch: arm64
+            eb_args: --mac
+          - os: windows-latest      # x64 runner，原生 NSIS，无需 wine
+            platform: win32
+            arch: x64
+            eb_args: --win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Build bundled runtime (${{ matrix.platform }}/${{ matrix.arch }})
+        run: node scripts/prepare-runtime.mjs --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+
+      - name: Package app
+        run: npx electron-builder ${{ matrix.eb_args }}
+
+      - name: Upload preview artifacts (branch builds)
+        if: startsWith(github.ref, 'refs/heads/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release (tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe

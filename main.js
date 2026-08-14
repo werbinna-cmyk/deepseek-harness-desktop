@@ -125,6 +125,45 @@ async function checkNow(manual) {
   await doUpdate(res);
 }
 
+/**
+ * Check this desktop app's own GitHub Releases for a newer build and notify.
+ * The dsh runtime updates in place via npm; a newer desktop app build still
+ * needs a manual download from the release page.
+ */
+async function checkDesktopRelease(manual) {
+  let rel;
+  try {
+    rel = await updater.checkAppRelease(app.getVersion());
+  } catch {
+    rel = { available: false };
+  }
+  if (!rel.available) return;
+  log.log(`desktop release available: ${rel.tag}`);
+  const target = rel.assetUrl || rel.url;
+  const openDownload = () => {
+    if (target) shell.openExternal(target);
+  };
+  if (manual) {
+    const choice = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      buttons: ['前往下载', '稍后'],
+      defaultId: 0,
+      cancelId: 1,
+      title: '发现桌面版新版本',
+      message: `DeepSeek Harness 桌面版 ${rel.tag} 已发布`,
+      detail: `当前版本：v${app.getVersion()}\n\n请从 Release 下载安装包（macOS 打开 .dmg 安装；Windows 运行 setup.exe 安装）。\n${rel.url || ''}`,
+    });
+    if (choice.response === 0) openDownload();
+  } else if (Notification.isSupported()) {
+    const n = new Notification({
+      title: 'DeepSeek Harness',
+      body: `桌面版新版本 ${rel.tag} 已发布，点击查看下载`,
+    });
+    n.on('click', openDownload);
+    n.show();
+  }
+}
+
 async function doUpdate(res) {
   updating = true;
   try {
@@ -157,8 +196,14 @@ function scheduleAutoUpdate() {
   const s = settings.read();
   if (!s.autoUpdate) return;
   // first check shortly after boot, then on the configured interval
-  setTimeout(() => checkNow(false), 10_000);
-  setInterval(() => checkNow(false), Math.max(1, s.checkIntervalHours || 6) * 3600_000);
+  setTimeout(() => {
+    checkNow(false);
+    checkDesktopRelease(false);
+  }, 10_000);
+  setInterval(() => {
+    checkNow(false);
+    checkDesktopRelease(false);
+  }, Math.max(1, s.checkIntervalHours || 6) * 3600_000);
 }
 
 // ── menu ──────────────────────────────────────────────────────────────────
@@ -200,7 +245,10 @@ function buildMenu() {
     {
       label: '更新',
       submenu: [
-        { label: '立即检查更新…', accelerator: 'CmdOrCtrl+U', click: () => checkNow(true) },
+        { label: '立即检查更新…', accelerator: 'CmdOrCtrl+U', click: () => {
+          checkNow(true);
+          checkDesktopRelease(true);
+        } },
         {
           label: '自动更新',
           type: 'checkbox',
