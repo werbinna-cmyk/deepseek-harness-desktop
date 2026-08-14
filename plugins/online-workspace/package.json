@@ -1,0 +1,7 @@
+{
+  "name": "online-workspace",
+  "version": "0.1.0",
+  "description": "在线工作区：把工作区的会话、上下文、文件、资源与代码自动同步到 GitHub/Gitee，实现跨设备无缝流转。",
+  "main": "index.js",
+  "license": "MIT"
+}
