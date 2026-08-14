@@ -79,27 +79,46 @@ deepseek-harness-desktop/
 ```bash
 npm install                    # 安装 electron / electron-builder（缓存写本地 .npm-cache）
 npm run prepare:runtime        # 解析最新版本并生成 runtime/ 运行时快照（约 300MB）
-npm run make:icon              # 生成 resources/icon.icns（内置绘制）
+npm run make:icon              # 生成 resources/icon.icns + icon.ico（内置绘制）
 npm run make:icon -- --from ~/Downloads/xxx.webp   # 或用指定图片生成图标
-npm run build                  # 打包 .app + .dmg + .zip（electron-builder，输出到 dist/）
+npm run build                  # 打包 macOS .app + .dmg + .zip（electron-builder，输出到 dist/）
 ```
 
 - 无 dmg 需求可只跑 `npm run build:dir`（只生成 .app）。
 - electron-builder 默认只打 `arm64`（Apple Silicon）；如需 Intel 版在
   `electron-builder.yml` 的 `mac.target` 中追加 `x64`。
-- 构建期已配置 `electronDist: node_modules/electron/dist`（复用本地 Electron，
-  不重复下载）。国内网络下若 electron-builder 仍需要拉取辅助工具，可先手动把
+- 国内网络下若 electron-builder 仍需要拉取辅助工具，可先手动把
   `dmgbuild-bundle-arm64-75c8a6c.tar.gz` 放入 `~/Library/Caches/electron-builder/
   dmg-builder@1.2.5/`（下载源：
   `https://npmmirror.com/mirrors/electron-builder-binaries/dmg-builder@1.2.5/`），
   或在构建命令前加 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/`。
 
+### Windows 安装版
+
+在 macOS 上交叉打包 Windows x64（NSIS 安装程序 + 便携 zip）：
+
+```bash
+node scripts/prepare-runtime.mjs --platform win32 --arch x64   # 生成 runtime-win/（win32 原生二进制）
+npx electron-builder --win                                      # 输出 dist/DeepSeek Harness-1.0.0-x64-setup.exe
+```
+
+- Windows 运行时用 `--os=win32 --cpu=x64 --ignore-scripts` 安装（原生包如 koffi/sharp
+  通过平台 optional 依赖提供预编译二进制，跳过安装脚本即可）。
+- Windows 数据目录为 `%APPDATA%\DeepSeek Harness`（代码里已按平台区分）。
+- Windows 差异：`child.kill('SIGTERM')` 在 Windows 上是强制结束（无优雅退出钩子）；
+  后端会话数据为增量持久化，影响有限。
+
 产物示例（`dist/`）：
 
 ```
+macOS:
 DeepSeek Harness.app/                  # 解包后的应用（直接可运行）
 DeepSeek Harness-1.0.0-arm64.dmg       # 安装镜像
 DeepSeek Harness-1.0.0-arm64-mac.zip   # 压缩包（自动更新/分发用）
+
+Windows:
+DeepSeek Harness-1.0.0-x64-setup.exe   # NSIS 安装程序
+DeepSeek Harness-1.0.0-win.zip         # 便携 zip
 ```
 
 ## 运行与冒烟测试

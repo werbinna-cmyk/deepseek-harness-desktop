@@ -419,3 +419,38 @@ for (const [name, size] of sizes) {
 }
 execFileSync('iconutil', ['-c', 'icns', ICONSET, '-o', ICNS], { stdio: 'ignore' });
 console.log(`icns: ${ICNS}`);
+
+// ── Windows .ico (multi-size, PNG-compressed entries) ───────────────────────
+
+const ICO = join(ROOT, 'resources', 'icon.ico');
+const icoSizes = [16, 32, 48, 64, 128, 256];
+const icoPngs = [];
+const tmpIcoDir = join(ROOT, 'resources', '.icon-ico');
+mkdirSync(tmpIcoDir, { recursive: true });
+for (const size of icoSizes) {
+  const file = join(tmpIcoDir, `${size}.png`);
+  execFileSync('sips', ['-z', String(size), String(size), MASTER, '--out', file], { stdio: 'ignore' });
+  icoPngs.push({ size, data: readFileSync(file) });
+}
+rmSync(tmpIcoDir, { recursive: true, force: true });
+const header = Buffer.alloc(6);
+header.writeUInt16LE(0, 0); // reserved
+header.writeUInt16LE(1, 2); // type: icon
+header.writeUInt16LE(icoPngs.length, 4);
+const entries = [];
+let offset = 6 + 16 * icoPngs.length;
+for (const { size, data } of icoPngs) {
+  const entry = Buffer.alloc(16);
+  entry.writeUInt8(size >= 256 ? 0 : size, 0);
+  entry.writeUInt8(size >= 256 ? 0 : size, 1);
+  entry.writeUInt8(0, 2); // palette
+  entry.writeUInt8(0, 3); // reserved
+  entry.writeUInt16LE(1, 4); // planes
+  entry.writeUInt16LE(32, 6); // bpp
+  entry.writeUInt32LE(data.length, 8);
+  entry.writeUInt32LE(offset, 12);
+  entries.push(entry);
+  offset += data.length;
+}
+writeFileSync(ICO, Buffer.concat([header, ...entries, ...icoPngs.map((p) => p.data)]));
+console.log(`ico: ${ICO}`);

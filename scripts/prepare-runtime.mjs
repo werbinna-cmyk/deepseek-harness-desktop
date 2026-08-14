@@ -7,7 +7,14 @@
 // each package — the `latest` dist-tag of the bundle packages is stale, so a
 // plain `npm i @deepseek-ai/dsh` would resolve the wrong bundles.
 //
-// Usage: node scripts/prepare-runtime.mjs
+// Usage:
+//   node scripts/prepare-runtime.mjs                      → runtime/  (host platform)
+//   node scripts/prepare-runtime.mjs --platform win32 --arch x64
+//                                                        → runtime-win/ (cross, for Windows x64)
+//   node scripts/prepare-runtime.mjs --dir runtime-win --platform win32 --arch x64
+//
+// Cross builds pass --os/--cpu to npm so platform-specific native deps (e.g.
+// sharp) resolve for the target platform even when building on macOS.
 
 import { spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
@@ -15,8 +22,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const RUNTIME_DIR = join(ROOT, 'runtime');
-const NPM_CACHE = join(ROOT, '.npm-cache');
+
+const args = process.argv.slice(2);
+const argOf = (name) => {
+  const i = args.indexOf('--' + name);
+  return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : undefined;
+};
+const PLATFORM = argOf('platform') ?? process.platform;
+const ARCH = argOf('arch') ?? process.arch;
+const DIR = argOf('dir') ?? (PLATFORM === 'win32' ? 'runtime-win' : 'runtime');
+
+const RUNTIME_DIR = join(ROOT, DIR);
+const NPM_CACHE = join(ROOT, `.npm-cache-${PLATFORM}-${ARCH}`);
 const REGISTRY = 'https://registry.npmjs.org';
 const PKGS = ['dsh', 'dsh-base', 'dsh-web-app'];
 const FALLBACK = { dsh: '0.1.0-rc.6', 'dsh-base': '0.1.0-rc.6', 'dsh-web-app': '0.1.0-rc.6' };
@@ -93,10 +110,9 @@ async function resolveVersions() {
 }
 
 async function main() {
-  console.log('Preparing runtime snapshot...');
+  console.log(`Preparing runtime snapshot for ${PLATFORM}/${ARCH} -> ${RUNTIME_DIR}`);
   const versions = await resolveVersions();
 
-  // npm itself: use the `latest` dist-tag (a range is fine for tooling).
   // npm itself: pin to the v11 line. npm 12 warns (and may later refuse) on
   // Node < 22.22.2, while Electron 37 ships Node 22.21.1; npm 11 supports it.
   let npmRange = '^11.0.0';
@@ -120,11 +136,20 @@ async function main() {
   const lock = join(RUNTIME_DIR, 'package-lock.json');
   if (existsSync(lock)) rmSync(lock, { force: true });
 
+  const installArgs = ['install', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=warn', '--cache', NPM_CACHE];
+  if (PLATFORM !== process.platform || ARCH !== process.arch) {
+    // Cross build: resolve optional/native deps for the target platform, and
+    // skip install scripts — native packages (e.g. koffi) ship prebuilt
+    // binaries via platform-specific optional deps selected by --os/--cpu,
+    // and their postinstall would otherwise try to compile for the HOST
+    // platform (which fails without a cross toolchain).
+    installArgs.push('--os=' + PLATFORM, '--cpu=' + ARCH, '--ignore-scripts');
+  }
   console.log(`Installing into ${RUNTIME_DIR} ...`);
-  // --cache keeps the build out of a possibly root-owned ~/.npm.
-  const r = spawnSync('npm', ['install', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=warn', '--cache', NPM_CACHE], {
+  const r = spawnSync('npm', installArgs, {
     cwd: RUNTIME_DIR,
     stdio: 'inherit',
+    env: { ...process.env, npm_config_platform: PLATFORM, npm_config_arch: ARCH },
   });
   if (r.status !== 0) {
     console.error(`npm install failed (exit ${r.status})`);
@@ -132,6 +157,7 @@ async function main() {
   }
 
   console.log('Runtime snapshot ready:');
+  console.log(`  target       ${PLATFORM}/${ARCH}`);
   console.log(`  dsh          @${versions.dsh}`);
   console.log(`  dsh-base     @${versions['dsh-base']}`);
   console.log(`  dsh-web-app  @${versions['dsh-web-app']}`);

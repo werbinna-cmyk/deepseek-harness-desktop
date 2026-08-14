@@ -3,9 +3,9 @@ productName: DeepSeek Harness
 directories:
   output: dist
   buildResources: resources
-# Reuse the Electron binary already installed by `npm install` instead of
-# downloading it again from GitHub (faster and network-independent).
-electronDist: node_modules/electron/dist
+# NOTE: electronDist is intentionally NOT set — electron-builder downloads the
+# per-platform Electron zip it needs (cached under ~/Library/Caches/electron-builder),
+# which is what makes the Windows cross-build from macOS work.
 files:
   - main.js
   - lib/**/*
@@ -13,8 +13,9 @@ files:
   - "!node_modules/**/*"
 extraResources:
   # The bundled dsh runtime snapshot (installed by scripts/prepare-runtime.mjs).
-  # Seeded into ~/Library/Application Support/DeepSeek Harness/runtime on first
-  # launch, where updates can then be applied in place.
+  # Seeded into the app data dir on first launch, where updates can then be
+  # applied in place. Windows builds use runtime-win/ (paths.js picks the
+  # subdirectory by platform).
   #
   # electron-builder hard-prunes a top-level `node_modules` directory in
   # extraResources (the filter rejects the first path segment "node_modules"),
@@ -26,6 +27,14 @@ extraResources:
       - "**/*"
   - from: runtime/node_modules
     to: runtime/node_modules
+    filter:
+      - "**/*"
+  - from: runtime-win
+    to: runtime-win
+    filter:
+      - "**/*"
+  - from: runtime-win/node_modules
+    to: runtime-win/node_modules
     filter:
       - "**/*"
 mac:
@@ -41,6 +50,22 @@ mac:
   darkModeSupport: true
   hardenedRuntime: false
   gatekeeperAssess: false
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  artifactName: "${productName}-${version}-${arch}-setup.${ext}"
 dmg:
   title: DeepSeek Harness
   contents:
