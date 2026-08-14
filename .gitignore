@@ -1,5 +1,6 @@
 node_modules/
 runtime/
+runtime-mac/
 runtime-win/
 dist/
 .npm-cache/

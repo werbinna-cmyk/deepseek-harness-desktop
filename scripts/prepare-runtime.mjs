@@ -30,7 +30,7 @@ const argOf = (name) => {
 };
 const PLATFORM = argOf('platform') ?? process.platform;
 const ARCH = argOf('arch') ?? process.arch;
-const DIR = argOf('dir') ?? (PLATFORM === 'win32' ? 'runtime-win' : 'runtime');
+const DIR = argOf('dir') ?? (PLATFORM === 'win32' ? 'runtime-win' : 'runtime-mac');
 
 const RUNTIME_DIR = join(ROOT, DIR);
 const NPM_CACHE = join(ROOT, `.npm-cache-${PLATFORM}-${ARCH}`);

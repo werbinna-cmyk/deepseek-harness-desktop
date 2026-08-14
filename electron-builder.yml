@@ -14,27 +14,19 @@ files:
 extraResources:
   # The bundled dsh runtime snapshot (installed by scripts/prepare-runtime.mjs).
   # Seeded into the app data dir on first launch, where updates can then be
-  # applied in place. Windows builds use runtime-win/ (paths.js picks the
-  # subdirectory by platform).
+  # applied in place. The ${os} macro (mac|win) selects the matching runtime
+  # dir so each platform ships only its own binaries (runtime-mac / runtime-win).
   #
   # electron-builder hard-prunes a top-level `node_modules` directory in
   # extraResources (the filter rejects the first path segment "node_modules"),
   # so the tree is split: the runtime root first, then node_modules copied
   # with itself as the `from` root.
-  - from: runtime
-    to: runtime
+  - from: runtime-${os}
+    to: runtime-${os}
     filter:
       - "**/*"
-  - from: runtime/node_modules
-    to: runtime/node_modules
-    filter:
-      - "**/*"
-  - from: runtime-win
-    to: runtime-win
-    filter:
-      - "**/*"
-  - from: runtime-win/node_modules
-    to: runtime-win/node_modules
+  - from: runtime-${os}/node_modules
+    to: runtime-${os}/node_modules
     filter:
       - "**/*"
 mac:

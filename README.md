@@ -1,8 +1,10 @@
-# DeepSeek Harness Desktop（macOS）
+# DeepSeek Harness Desktop（macOS / Windows）
 
-DeepSeek Harness 的 macOS 桌面版。功能与网页版完全一致：应用启动时自动拉起本地
-`dsh web` 后端服务（Cordis 运行时，同时提供 API 与前端静态资源），并在 Electron
-窗口中加载同一套 Web UI（会话、工具、插件、设置、目标、工作流等全部可用）。
+> 仓库：<https://github.com/werbinna-cmyk/deepseek-harness-desktop>
+
+DeepSeek Harness 的桌面版（macOS + Windows）。功能与网页版完全一致：应用启动时自动
+拉起本地 `dsh web` 后端服务（Cordis 运行时，同时提供 API 与前端静态资源），并在
+Electron 窗口中加载同一套 Web UI（会话、工具、插件、设置、目标、工作流等全部可用）。
 
 核心特性：
 
@@ -14,6 +16,9 @@ DeepSeek Harness 的 macOS 桌面版。功能与网页版完全一致：应用�
 - **启动即拉起后端**：主进程用 Electron 自带 Node（`ELECTRON_RUN_AS_NODE`）以子进程
   方式启动 `dsh --profile web`，解析其打印的 URL 后加载界面；退出时优雅地 SIGTERM
   停掉后端。
+- **复制粘贴**：应用不依赖系统菜单的 Edit 项，主进程通过 `before-input-event`
+  拦截 Cmd/Ctrl+C/V/X/A/Z 并驱动 `webContents` 剪贴板 API，嵌入式 Web UI 内的
+  复制/粘贴/剪切/全选/撤销重做均可用。
 - **自动更新**：定期（启动后 10 秒 + 每 6 小时，可在“更新”菜单关闭）检查
   [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
   的新版本。由于该仓库没有 GitHub Release，真正的发布通道是 npm（`@deepseek-ai/*`），
@@ -33,10 +38,10 @@ deepseek-harness-desktop/
 │   ├── backend.js              # 后端子进程生命周期：spawn/URL 解析/端口回退/停止
 │   └── updater.js              # npm + GitHub 版本检测、npm 安装更新
 ├── scripts/
-│   ├── prepare-runtime.mjs     # 构建期：生成 runtime/ 运行时快照
+│   ├── prepare-runtime.mjs     # 构建期：生成 runtime-mac/ 或 runtime-win/ 运行时快照
 │   └── make-icon.mjs           # 生成应用图标（--from <图片> 或内置绘制）
 ├── resources/                  # icon.icns 等
-├── runtime/                    # 运行时快照（构建产物，随 .app 打包）
+├── runtime-mac/ / runtime-win/ # 平台运行时快照（构建产物，随应用按平台打包）
 └── electron-builder.yml        # 打包配置
 ```
 
@@ -78,7 +83,7 @@ deepseek-harness-desktop/
 
 ```bash
 npm install                    # 安装 electron / electron-builder（缓存写本地 .npm-cache）
-npm run prepare:runtime        # 解析最新版本并生成 runtime/ 运行时快照（约 300MB）
+npm run prepare:runtime        # 解析最新版本并生成 runtime-mac/ 运行时快照（约 300MB）
 npm run make:icon              # 生成 resources/icon.icns + icon.ico（内置绘制）
 npm run make:icon -- --from ~/Downloads/xxx.webp   # 或用指定图片生成图标
 npm run build                  # 打包 macOS .app + .dmg + .zip（electron-builder，输出到 dist/）
@@ -124,7 +129,7 @@ DeepSeek Harness-1.0.0-win.zip         # 便携 zip
 ## 运行与冒烟测试
 
 ```bash
-npm start                      # 开发模式运行（未打包，使用仓库内 runtime/）
+npm start                      # 开发模式运行（未打包，使用仓库内 runtime-mac/）
 npm run smoke                  # 冒烟测试：拉起后端 → 打印 SMOKE_OK <url> → 退出
 node scripts/verify-update-logic.mjs   # 校验更新检测逻辑（registry 版本 + GitHub HEAD）
 ```
