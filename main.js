@@ -243,6 +243,48 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.loadURL(loadingPage());
 
+  // Clipboard shortcuts WITHOUT menu items: the app has no Edit menu, so the
+  // OS-level Cmd/Ctrl+C/V/X/A/Z accelerators never reach the web contents.
+  // Intercept the key events here and drive webContents' clipboard APIs so
+  // copy/paste/cut/select-all/undo/redo work inside the embedded UI.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const isMac = process.platform === 'darwin';
+    const mod = isMac ? input.meta : input.control;
+    if (!mod) return;
+    const key = String(input.key || '').toLowerCase();
+    const wc = mainWindow.webContents;
+    const doAction = (fn) => {
+      event.preventDefault();
+      fn.call(wc);
+    };
+    switch (key) {
+      case 'c':
+        doAction(wc.copy);
+        break;
+      case 'v':
+        if (input.shift) doAction(wc.pasteAndMatchStyle);
+        else doAction(wc.paste);
+        break;
+      case 'x':
+        doAction(wc.cut);
+        break;
+      case 'a':
+        doAction(wc.selectAll);
+        break;
+      case 'z':
+        if (isMac && input.shift) doAction(wc.redo);
+        else if (input.shift) doAction(wc.redo);
+        else doAction(wc.undo);
+        break;
+      case 'y':
+        if (!isMac) doAction(wc.redo);
+        break;
+      default:
+        break;
+    }
+  });
+
   // Keep the shell on the local backend; everything else goes to the browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/i.test(url)) shell.openExternal(url);
