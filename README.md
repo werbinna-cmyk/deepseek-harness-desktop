@@ -36,10 +36,7 @@ deepseek-harness-desktop/
 │   ├── settings.js             # settings.json（端口、自动更新开关、更新状态）
 │   ├── runtime.js              # 首次运行：数据布局、运行时种子拷贝、~/.dsh 迁移
 │   ├── backend.js              # 后端子进程生命周期：spawn/URL 解析/端口回退/停止
-│   ├── updater.js              # npm + GitHub 版本检测、npm 安装更新
-│   └── plugin-loader.js        # 桌面插件加载器（加载 plugins/*，注入菜单/退出钩子/IPC）
-├── plugins/
-│   └── online-workspace/       # 在线工作区插件（OAuth 登录 + git 自动同步，可独立分发）
+│   └── updater.js              # npm + GitHub 版本检测、npm 安装更新
 ├── scripts/
 │   ├── prepare-runtime.mjs     # 构建期：生成 runtime-mac/ 或 runtime-win/ 运行时快照
 │   └── make-icon.mjs           # 生成应用图标（--from <图片> 或内置绘制）
@@ -128,40 +125,6 @@ Windows:
 DeepSeek Harness-1.0.0-x64-setup.exe   # NSIS 安装程序
 DeepSeek Harness-1.0.0-win.zip         # 便携 zip
 ```
-
-## 在线工作区（插件）
-
-桌面版内置「在线工作区」插件（`plugins/online-workspace/`，可独立成插件分发）：把
-工作区目录（文件、资源、代码）与该工作区对应的 DSH 会话/上下文自动同步到
-**GitHub 或 Gitee**，换台电脑打开应用连接同一平台即可拉取，实现工作无缝流转。
-
-### 使用流程
-
-1. 菜单「在线工作区 → 连接 GitHub / Gitee…」→ 选择平台。
-2. 首次使用按提示在「同步设置」中填写 OAuth 客户端信息：
-   - **GitHub**：创建一个 OAuth App（Settings → Developer settings → OAuth Apps），
-     填入 **Client ID**（device flow，无需 Secret）；随后浏览器打开
-     `github.com/login/device` 输入应用显示的代码即完成登录。
-   - **Gitee**：创建第三方应用（设置 → 安全设置 → 第三方应用），填入
-     **Client ID + Client Secret**；浏览器打开 Gitee 授权页，本地回调完成登录。
-3. 设置要同步的**工作区目录**（默认 `~/Documents/DSH Online Workspace`）与远端仓库名，
-   保存并连接 → 应用自动创建远端仓库并开始同步。
-4. 之后**自动同步**：每 5 分钟一次 + 退出应用时；启动时先拉取远端变更再推送。
-   也可随时「立即同步」或查看「同步状态」。
-
-### 同步内容
-
-- 工作区目录内的文件 / 资源 / 代码（git 仓库根，自动 `.gitignore` 排除
-  node_modules、runtime、dist、日志等）
-- 该工作区的 DSH 会话/上下文（拷贝到 `工作区/.dsh/sessions/`，pull 回来时合并回
-  `$DSH_HOME/sessions`，对话即可在新机器上出现）
-
-> 换机使用：新机器安装应用 → 连接同一平台 → 在「同步设置」中选择同一工作区目录
-> → 连接后自动拉取全部内容与历史会话。
-
-> 注意：令牌与 Gitee Client Secret 存储在应用 `settings.json`；同步目标是你的
-> 私有远端仓库，请勿把含敏感信息的工作区指向公开仓库。Windows 需安装
-> Git for Windows（`git` 在 PATH 中）。
 
 ## 发布与 Release 使用说明
 

@@ -15,23 +15,18 @@
 // `--smoke-test` runs headless-ish: starts the backend with an OS-assigned
 // port, prints SMOKE_OK <url> / SMOKE_FAIL and exits — used by CI and dev.
 
-const { app, BrowserWindow, Menu, dialog, Notification, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, dialog, Notification, shell } = require('electron');
 const paths = require('./lib/paths');
 const log = require('./lib/log');
 const settings = require('./lib/settings');
 const runtime = require('./lib/runtime');
 const backend = require('./lib/backend');
 const updater = require('./lib/updater');
-const { loadPlugins } = require('./lib/plugin-loader');
 
 let mainWindow = null;
 let quitting = false;
 let updating = false;
 let backendFailed = false;
-
-// Desktop plugins (plugins/*) contribute menu parts and quit hooks.
-const pluginState = { menu: [], quit: [] };
-let loadedPlugins = [];
 
 // ── status pages (dark, minimal) ──────────────────────────────────────────
 
@@ -262,7 +257,6 @@ function buildMenu() {
         },
       ],
     },
-    ...pluginState.menu,
     { role: 'windowMenu' },
     {
       label: '帮助',
@@ -416,22 +410,6 @@ if (SMOKE) {
         log.log(`imported from legacy ~/.dsh: ${migrated.copied.join(', ')}`);
       }
 
-      // Load desktop plugins (menu contributions, quit hooks) before building
-      // the menu so plugin menu parts are included.
-      loadedPlugins = await loadPlugins({
-        app,
-        dialog,
-        shell,
-        BrowserWindow,
-        ipcMain,
-        log,
-        paths,
-        settings,
-        getMainWindow: () => mainWindow,
-        menu: { add: (part) => pluginState.menu.push(part) },
-        onQuit: (fn) => pluginState.quit.push(fn),
-      });
-
       createWindow();
       buildMenu();
       startBackend();
@@ -446,16 +424,14 @@ if (SMOKE) {
       app.quit();
     });
 
-    // Graceful backend teardown before exit (plugins may need a final sync).
+    // Graceful backend teardown before exit.
     app.on('before-quit', (event) => {
       if (quitting) return;
       event.preventDefault();
       quitting = true;
-      Promise.allSettled(pluginState.quit.map((fn) => Promise.resolve().then(fn))).then(() =>
-        backend.stop().then(() => {
-          app.exit(0);
-        }),
-      );
+      backend.stop().then(() => {
+        app.exit(0);
+      });
     });
   }
 }

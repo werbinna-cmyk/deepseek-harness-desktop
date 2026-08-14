@@ -9,7 +9,6 @@ directories:
 files:
   - main.js
   - lib/**/*
-  - plugins/**/*
   - package.json
   - "!node_modules/**/*"
 extraResources:
